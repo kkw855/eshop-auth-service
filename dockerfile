@@ -8,7 +8,7 @@ RUN sbt assembly
 
 FROM openjdk:21-slim
 
-COPY --from=builder /app/target/scala-3.7.0/eshop-auth-assembly-0.1.0-SNAPSHOT.jar /app/app.jar
+COPY --from=builder /app/target/scala-3.7.0/eshop-auth-service-assembly-0.1.0-SNAPSHOT.jar /app/app.jar
 
 # Expose the port Nginx will listen on
 EXPOSE 5001
