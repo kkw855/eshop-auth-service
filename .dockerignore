@@ -1,0 +1,7 @@
+.gitignore
+.gitattributes
+docker-compose.yaml
+README.md
+.bsp/
+.idea/
+target/
