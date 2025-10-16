@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: eshop-mongodb
+  labels:
+    app: eshop-mongodb
+spec:
+  type: ClusterIP
+  selector:               # 파드 집합 선택자
+    app: eshop-mongodb
+  ports:
+    - port: 27017          # 노출할 서비스 포트
+      targetPort: 27017    # 연결할 컨테이너 포트
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: eshop-mongodb-pvc
+  labels:
+    app: eshop-mongodb
+spec:
+  storageClassName: rook-ceph-block
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eshop-mongodb
+  labels:
+    app: eshop-mongodb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eshop-mongodb
+  template:
+    metadata:
+      labels:
+        app: eshop-mongodb
+    spec:
+      containers:
+        - name: eshop-mongodb
+          image: arm64v8/mongo:8.0-noble
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              value: kkw855
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              value: mongo123
+            - name: MONGO_INITDB_DATABASE
+              value: eshop
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: mongodb-persistent-storage
+              mountPath: /var/lib/postgresql/data # Mount the volume to a parent directory
+      volumes:
+        - name: mongodb-persistent-storage
+          persistentVolumeClaim:
+            claimName: eshop-mongodb-pvc

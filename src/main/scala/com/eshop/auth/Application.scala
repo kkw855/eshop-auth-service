@@ -1,29 +1,37 @@
 package com.eshop.auth
 
-import cats.effect.{IO, IOApp}
-import com.comcast.ip4s.{host, port}
-import org.http4s.HttpRoutes
-import org.http4s.ember.server.EmberServerBuilder
+import cats.effect.{IO, IOApp, Resource}
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import cats.effect.*
-import org.http4s.*
-import org.http4s.dsl.io.*
+import pureconfig.ConfigSource
+import org.http4s.server.Server
+import org.http4s.ember.server.EmberServerBuilder
+import com.eshop.auth.config.AppConfig
+import com.eshop.auth.config.syntax.*
+import com.eshop.auth.modules.{Core, Database, HttpApi, LiveMailSender, Redis}
 
 object Application extends IOApp.Simple {
 
   given logger: Logger[IO] = Slf4jLogger.getLogger[IO]
 
-  val helloWorldService: HttpRoutes[IO] = HttpRoutes.of[IO] {
-    case GET -> Root / auth =>
-      Ok(s"Hello, Auth")
-  }
+  override def run: IO[Unit] =
+    ConfigSource.default.loadF[IO, AppConfig].flatMap {
+      case AppConfig(emberConfig, mongoConfig, redisConfig, smtpConfig) =>
+        val appResource: Resource[IO, Server] = for {
+          redisCommands <- Redis.makeRedisResource[IO](redisConfig)
+          mongo         <- Database.makeMongoResource[IO](mongoConfig)
+          mailSender    <- LiveMailSender[IO](smtpConfig)
+          core          <- Core[IO](mongo, redisCommands, mailSender)
+          httpApi       <- HttpApi[IO](core)
+          // TODO: http4s request limit using client ip 검색
+          server <- EmberServerBuilder
+            .default[IO]
+            .withHost(emberConfig.ipAddress)
+            .withPort(emberConfig.port)
+            .withHttpApp(httpApi.endPoints.orNotFound)
+            .build
+        } yield server
 
-  override def run: IO[Unit] = EmberServerBuilder
-    .default[IO]
-    .withHost(host"0.0.0.0")
-    .withPort(port"5001")
-    .withHttpApp(helloWorldService.orNotFound)
-    .build
-    .use(_ => IO.println("Start Ecommerce Server") *> IO.never)
+        appResource.use(_ => logger.info("Start EShop Auth Server") *> IO.never)
+    }
 }
