@@ -12,8 +12,8 @@ import com.eshop.auth.http.routes.{HealthRoutes, UserRoutes}
 
 final class HttpApi[F[_]: {Async, Logger}] private (core: Core[F]) {
   private val healthRoutes = HealthRoutes[F].routes
-  private val userRoutes = UserRoutes[F](core.users, core.mailSender).routes
-  
+  private val userRoutes = UserRoutes[F](core.mailSender, core.redisClient, core.users).routes
+
   val endPoints: HttpRoutes[F] = Router(
     "/api" -> (healthRoutes <+> userRoutes)
   )

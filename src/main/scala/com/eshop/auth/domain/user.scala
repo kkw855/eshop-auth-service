@@ -1,7 +1,5 @@
 package com.eshop.auth.domain
 
-import org.bson.types.ObjectId
-
 object user {
   // case class User(_id: ObjectId, email: String)
 //  object User {

@@ -8,7 +8,9 @@ import org.http4s.server.Server
 import org.http4s.ember.server.EmberServerBuilder
 import com.eshop.auth.config.AppConfig
 import com.eshop.auth.config.syntax.*
-import com.eshop.auth.modules.{Core, Database, HttpApi, LiveMailSender, Redis}
+import com.eshop.auth.modules.{Core, Database, HttpApi, LiveMailSender, LiveRedis}
+
+// TODO: REST API Document
 
 object Application extends IOApp.Simple {
 
@@ -18,10 +20,11 @@ object Application extends IOApp.Simple {
     ConfigSource.default.loadF[IO, AppConfig].flatMap {
       case AppConfig(emberConfig, mongoConfig, redisConfig, smtpConfig) =>
         val appResource: Resource[IO, Server] = for {
-          redisCommands <- Redis.makeRedisResource[IO](redisConfig)
+          // TODO: 모뮬화 가능 ??
+          redisClient <- LiveRedis.make[IO](redisConfig)
           mongo         <- Database.makeMongoResource[IO](mongoConfig)
           mailSender    <- LiveMailSender[IO](smtpConfig)
-          core          <- Core[IO](mongo, redisCommands, mailSender)
+          core          <- Core[IO](mongo, redisClient, mailSender)
           httpApi       <- HttpApi[IO](core)
           // TODO: http4s request limit using client ip 검색
           server <- EmberServerBuilder

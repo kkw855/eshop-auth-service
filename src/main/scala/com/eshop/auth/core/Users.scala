@@ -19,8 +19,7 @@ trait Users[F[_]] {
 }
 
 final class LiveUsers[F[_]: {Async, Logger}] private (
-    database: MongoDatabase,
-    redis: RedisCommands[String, String]
+    database: MongoDatabase
 ) extends Users[F] {
   override def find(email: String): F[Option[User]] = Async[F].delay {
 //    val collection = database.getCollection("users")
@@ -51,8 +50,7 @@ final class LiveUsers[F[_]: {Async, Logger}] private (
 
 object LiveUsers {
   def apply[F[_]: {Async, Logger}](
-      database: MongoDatabase,
-      redis: RedisCommands[String, String]
+      database: MongoDatabase
   ): F[LiveUsers[F]] =
-    new LiveUsers[F](database, redis).pure[F]
+    new LiveUsers[F](database).pure[F]
 }
