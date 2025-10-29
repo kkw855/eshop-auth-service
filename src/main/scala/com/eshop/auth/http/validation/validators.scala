@@ -13,7 +13,7 @@ object validators {
   private final case class InvalidEmail(fieldName: String)
       extends ValidationFailure(s"'$fieldName' is not a valid email")
   private final case class InvalidOtp(fieldName: String)
-    extends ValidationFailure(s"'$fieldName' is not a valid OTP")
+      extends ValidationFailure(s"'$fieldName' is not a valid OTP")
 
   type ValidationResult[A] = ValidatedNec[ValidationFailure, A]
 
@@ -48,6 +48,43 @@ object validators {
       validPassword
     ).mapN(
       NewUserInfo.apply
+    )
+  }
+
+  given verifyUserInfoValidator: Validator[VerifyUserInfo] = verifyUserInfo => {
+    // TODO: 중복 제거
+    val validName = validateRequired(verifyUserInfo.name, "name")(_.nonEmpty)
+    val validUserEmail = validateRequired(verifyUserInfo.email, "email")(_.nonEmpty).andThen(e =>
+      validateEmail(e, "email")
+    )
+    val validPassword = validateRequired(verifyUserInfo.password, "password")(_.nonEmpty)
+
+    val validOtp =
+      if (verifyUserInfo.otp.length != 4) InvalidOtp(verifyUserInfo.otp).invalidNec
+      else verifyUserInfo.otp.validNec
+
+    (
+      validName,
+      validUserEmail,
+      validPassword,
+      validOtp
+    ).mapN(
+      VerifyUserInfo.apply
+    )
+  }
+
+  given loginUserInfoValidator: Validator[LoginUserInfo] = loginUserInfo => {
+    // TODO: 중복 제거
+    val validUserEmail = validateRequired(loginUserInfo.email, "email")(_.nonEmpty).andThen(e =>
+      validateEmail(e, "email")
+    )
+    val validPassword = validateRequired(loginUserInfo.password, "password")(_.nonEmpty)
+
+    (
+      validUserEmail,
+      validPassword
+    ).mapN(
+      LoginUserInfo.apply
     )
   }
 }

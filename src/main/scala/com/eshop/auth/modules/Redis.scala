@@ -7,7 +7,7 @@ import org.typelevel.log4cats.Logger
 
 import io.lettuce.core.{RedisURI, RedisClient}
 import io.lettuce.core.api.StatefulRedisConnection
-import io.lettuce.core.api.async.RedisStringAsyncCommands
+import io.lettuce.core.api.async.RedisAsyncCommands
 
 import scala.jdk.FutureConverters.*
 
@@ -27,8 +27,10 @@ object RedisDeserializer {
 trait Redis[F[_]] {
   def set(key: String, value: String): F[Unit]
   def setex(key: String, seconds: Long, value: String): F[Unit]
-
+  
   def get[T](key: String)(using deserializer: RedisDeserializer[T]): F[Option[T]]
+  
+  def del(keys: String*): F[Unit]
 }
 
 // TODO: Exception
@@ -36,7 +38,7 @@ final class LiveRedis[F[_]: {Logger, Async}] private (
     val client: RedisClient,
     val connection: StatefulRedisConnection[String, String]
 ) extends Redis[F] {
-  private val asyncCommands: RedisStringAsyncCommands[String, String] = connection.async()
+  private val asyncCommands: RedisAsyncCommands[String, String] = connection.async()
 
   // TODO: 1. Redis Commands 함수로 추가할지 2. ADT 로 추가할지 ??
   override def set(key: String, value: String): F[Unit] =
@@ -52,6 +54,9 @@ final class LiveRedis[F[_]: {Logger, Async}] private (
       .map(
         Option(_).map(deserializer.deserialize)
       )
+
+  override def del(keys: String*): F[Unit] =
+    Async[F].fromFuture(Async[F].delay(asyncCommands.del(keys*).asScala)).void
 }
 
 object LiveRedis {

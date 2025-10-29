@@ -13,6 +13,7 @@ import com.eshop.auth.modules.{MailSender, Redis}
 final class Core[F[_]] private (
     val mailSender: MailSender[F],
     val redisClient: Redis[F],
+    val hashing: Hashing[F],
     val users: Users[F]
 )
 
@@ -20,11 +21,12 @@ object Core {
   def apply[F[_]: {Async, Logger}](
       database: MongoDatabase,
       redisClient: Redis[F],
-      mailSender: MailSender[F]
+      mailSender: MailSender[F],
+      hashing: Hashing[F]
   ): Resource[F, Core[F]] = {
     val coreF = for {
       users <- LiveUsers[F](database)
-    } yield new Core(mailSender, redisClient, users)
+    } yield new Core(mailSender, redisClient, hashing, users)
 
     Resource.eval(coreF)
   }
